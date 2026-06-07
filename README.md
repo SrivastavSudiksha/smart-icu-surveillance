@@ -196,10 +196,3 @@ Focused on building AI-driven systems for healthcare and surveillance domains, w
 
 ---
 
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
-> *"Automating the invisible layer of hospital security — so healthcare professionals can focus on care, not surveillance."*
