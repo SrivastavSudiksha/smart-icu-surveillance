@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CAM-ICU — Entry Gate</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500&family=Geist+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<div class="crit-veil" id="criticalOverlay">
+  <div class="crit-card">
+    <div class="crit-kicker">⚠ Protocol Violation</div>
+    <div class="crit-heading" id="criticalTitle">PPE Incomplete</div>
+    <div id="critPersonLine" style="display:none"></div>
+    <div class="crit-body" id="criticalMsg"></div>
+    <div class="crit-actions">
+      <button class="btn btn-warn" onclick="dismissCritical()">Acknowledge</button>
+      <button class="btn" onclick="dismissCritical()">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-veil" id="qrModal">
+  <div class="modal-card" style="text-align:center">
+    <div class="modal-kicker">ID Card QR Code</div>
+    <div class="modal-title" id="qrName" style="font-size:18px;margin-bottom:16px"></div>
+    <canvas id="qrCanvas" style="border:1px solid #e8e5e0;border-radius:8px;display:block;margin:0 auto"></canvas>
+    <p style="font-family:monospace;font-size:11px;color:#9c9890;margin-top:10px">Yeh print karke ID card pe chipkao</p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:16px">
+      <button class="btn btn-ok" onclick="printQR()">🖨 Print</button>
+      <button class="btn" onclick="closeQR()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastShelf"></div>
+
+<aside class="rail">
+  <div class="rail-brand">
+    <div class="rail-pulse"></div>
+    <span>CAM-ICU</span>
+  </div>
+  <nav class="rail-nav">
+    <a class="rlink active" onclick="switchView('gate')"     data-view="gate"><span class="rn">01</span>ICU Gate</a>
+    <a class="rlink"        onclick="switchView('log')"      data-view="log"><span class="rn">02</span>Alert Log</a>
+    <a class="rlink"        onclick="switchView('settings')" data-view="settings"><span class="rn">03</span>Settings</a>
+  </nav>
+  <div class="rail-foot">
+    <div class="status-line">
+      <span class="status-pip" id="sysPip"></span>
+      <span id="sysLbl">Monitoring</span>
+    </div>
+    <div class="rail-time" id="railTime">--:--</div>
+  </div>
+</aside>
+
+<div class="stage">
+
+  <div class="view active" id="view-gate">
+    <div class="topbar">
+      <div>
+        <div class="tb-eyebrow">ICU Entry Gate &nbsp;·&nbsp; <span id="shiftLabel">—</span></div>
+        <h1 class="tb-title">PPE <i>Entry Gate</i></h1>
+        <div class="tb-sub" id="cam-sub">Camera start karo — QR auto scan hoga, PPE detect hoga</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn" id="camBtn" onclick="Camera.toggle()">▶ Start Camera</button>
+        <button class="btn" onclick="OCR.clear()">↺ Reset Scan</button>
+        <button class="btn" onclick="Camera.snapshot()">📸 Snapshot</button>
+        <button class="btn btn-warn" onclick="triggerDrill()">Test Alert</button>
+      </div>
+    </div>
+
+    <div class="gate-body">
+
+      <div class="gate-cam">
+        <div class="cam-frame" id="camViewport">
+          <video id="videoEl" autoplay playsinline muted></video>
+          <canvas id="overlayCanvas"></canvas>
+          <div class="cam-dark" id="camOffline">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.2">
+              <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+              <line x1="1" y1="1" x2="23" y2="23" stroke="#444"/>
+            </svg>
+            <p>Camera offline</p>
+            <p class="cam-hint">▶ Start Camera dabao</p>
+          </div>
+          <div class="cam-hud" id="camHUD">
+            <span class="hud-rec">● REC</span>
+            <span id="fpsBadge">—</span>
+            <span id="camTimer">00:00</span>
+          </div>
+        </div>
+
+        <div class="model-bar" id="modelBar">
+          <span class="model-dot" id="modelDot">○</span>
+          <span id="modelBarText">Model check ho raha hai...</span>
+        </div>
+
+        <div class="model-bar" id="ocrBar">
+          <span class="model-dot" id="ocrDot">○</span>
+          <span id="ocrBarText">QR Scanner load ho raha hai...</span>
+        </div>
+
+        <div class="ocr-result" id="ocrResult">
+          <div class="ocr-idle">Camera ke saamne QR code rakho — automatically scan hoga</div>
+        </div>
+
+        <div class="manual-select-wrap">
+          <div class="col-hed" style="margin:0 0 6px">Ya manually select karo ↓</div>
+          <div id="manualSelectList" class="manual-list"></div>
+        </div>
+
+        <div class="mini-log-head">
+          <span class="col-hed" style="margin:0">Entry Log</span>
+          <button class="btn btn-xs" onclick="exportLog()">Export CSV</button>
+        </div>
+        <div id="entryLog" class="entry-log"><div class="nil">Abhi tak koi entry nahi</div></div>
+      </div>
+
+      <div class="gate-proto">
+        <div class="person-bar" id="currentPersonBar">
+          <div class="person-idle">QR scan karo — staff identify hoga</div>
+        </div>
+
+        <div class="proto-header">
+          <span class="col-hed" style="margin:0">PPE Checklist</span>
+          <span class="status-tag" id="protoStatusBadge">pending</span>
+        </div>
+
+        <div id="checklist" class="checklist-compact"></div>
+
+        <div class="proto-stats">
+          <div class="pstat"><div class="pstat-n ok" id="statCompliant">0</div><div class="pstat-l">Done</div></div>
+          <div class="pstat"><div class="pstat-n err" id="statMissed">0</div><div class="pstat-l">Missing</div></div>
+          <div class="pstat"><div class="pstat-n" id="statScore">0%</div><div class="pstat-l">Score</div></div>
+        </div>
+
+        <div class="prog-track"><div class="prog-fill" id="complianceBarFill"></div></div>
+
+        <div class="proto-btns">
+          <button class="btn btn-ok btn-full" onclick="Protocol.evaluateEntry()">✓ Log Entry &amp; Send SMS</button>
+          <button class="btn btn-full" onclick="Protocol.resetProtocol()">↺ Reset Checklist</button>
+          <button class="btn btn-xs" onclick="Protocol.markAllCompliant()">Mark all done</button>
+        </div>
+
+        <div class="col-hed" style="margin-top:16px">Camera Detection</div>
+        <div id="detectionItems"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="view" id="view-log">
+    <div class="topbar">
+      <div>
+        <div class="tb-eyebrow">History</div>
+        <h1 class="tb-title">Alert <i>Log</i></h1>
+        <div class="tb-sub">Saare violations aur SMS ka record</div>
+      </div>
+      <div class="tb-actions">
+        <span class="log-count" id="alertCountBadge">0</span>
+        <button class="btn btn-xs" onclick="clearAlerts()">Clear</button>
+        <button class="btn" onclick="exportLog()">Export CSV</button>
+      </div>
+    </div>
+    <div style="padding:28px 44px">
+      <div id="alertFeed" class="alert-feed">
+        <div class="nil">Koi alert nahi — sab theek hai</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-settings">
+    <div class="topbar">
+      <div>
+        <div class="tb-eyebrow">Configuration</div>
+        <h1 class="tb-title">Staff &amp; <i>SMS Settings</i></h1>
+        <div class="tb-sub">Staff add karo, QR print karo, SMS configure karo</div>
+      </div>
+    </div>
+
+    <div class="settings-body">
+
+      <div class="settings-section">
+        <div class="col-hed">Staff Database</div>
+        <div class="settings-card">
+          <div class="staff-form">
+            <input class="field-inp" id="staffName"  type="text" placeholder="Naam (Dr. R. Mehta)"/>
+            <input class="field-inp" id="staffPhone" type="tel"  placeholder="Phone (+91 98765 43210)"/>
+            <input class="field-inp" id="staffRole"  type="text" placeholder="Role (Doctor / Nurse)"/>
+            <input type="hidden" id="staffEditId"/>
+            <button class="btn btn-ok" id="addStaffBtn" onclick="addStaffMember()">+ Add</button>
+          </div>
+          <div class="settings-note" style="margin-top:4px">
+            Staff add karne ke baad <strong>QR Print</strong> button se QR code print karo aur ID card pe chipkao. Camera automatically scan karega.
+          </div>
+          <div id="staffTable" class="staff-table"></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="col-hed">SMS Configuration</div>
+        <div class="settings-card">
+          <div class="field-row">
+            <label class="field-lbl">Fast2SMS API Key (free — fast2sms.com)</label>
+            <input class="field-inp" id="settingsF2S" type="text" placeholder="Aapki Fast2SMS API key"/>
+          </div>
+          <div class="field-row">
+            <label class="field-lbl">Ward / Department</label>
+            <input class="field-inp" id="settingsWard" type="text" placeholder="ICU Ward 4"/>
+          </div>
+          <div class="field-row">
+            <label class="field-lbl">Custom Backend Endpoint (optional)</label>
+            <input class="field-inp" id="settingsEndpoint" type="url" placeholder="https://aapka-server.com/api/sms"/>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Violation pe SMS</div><div class="toggle-desc">PPE missing hone pe staff ko SMS</div></div>
+            <div class="toggle-wrap"><input type="checkbox" id="smsOnViol" checked onchange="saveSoundPref()"/><label for="smsOnViol" class="toggle-switch"></label></div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Compliant pe SMS</div><div class="toggle-desc">Sab sahi hone pe bhi SMS</div></div>
+            <div class="toggle-wrap"><input type="checkbox" id="smsOnCompliant" onchange="saveSoundPref()"/><label for="smsOnCompliant" class="toggle-switch"></label></div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Alarm sound</div><div class="toggle-desc">Violation pe beep</div></div>
+            <div class="toggle-wrap"><input type="checkbox" id="soundEnabled" checked onchange="saveSoundPref()"/><label for="soundEnabled" class="toggle-switch"></label></div>
+          </div>
+          <div class="settings-actions">
+            <button class="btn btn-ok" onclick="saveSettings()">Save Settings</button>
+            <button class="btn" onclick="testSMS()">Test SMS</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/alerts.js"></script>
+<script src="js/sms.js"></script>
+<script src="js/staff.js"></script>
+<script src="js/ocr.js"></script>
+<script src="js/onnx.js"></script>
+<script src="js/protocol.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
